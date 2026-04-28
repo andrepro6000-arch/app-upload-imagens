@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "Image": {
+      "title": "Image",
+      "description": "Metadata for an uploaded or imported image.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the image file or a provided title."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "The public URL of the image."
+        },
+        "size": {
+          "type": "string",
+          "description": "The human-readable size of the image (e.g., '1.2 MB')."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the image was added."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who added the image."
+        },
+        "storagePath": {
+          "type": "string",
+          "description": "The path to the file in Firebase Storage."
+        }
+      },
+      "required": ["name", "url", "createdAt", "userId"]
+    }
+  },
+  "firestore": {
+    "/images/{imageId}": {
+      "schema": "Image",
+      "description": "A collection of images managed by users."
+    }
+  }
+}

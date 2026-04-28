@@ -1,0 +1,71 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity Validations
+    function isValidImage(data) {
+      let coreKeys = ['name', 'url', 'size', 'createdAt', 'userId'];
+      let allKeys = data.keys();
+      
+      return allKeys.hasAll(coreKeys)
+        && (allKeys.size() == 5 || (allKeys.size() == 6 && allKeys.hasAll(['storagePath'])))
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 256
+        && data.url is string && data.url.size() > 0 && data.url.size() <= 2048
+        && data.size is string && data.size.size() <= 30
+        && data.createdAt == request.time
+        && data.userId == request.auth.uid
+        && (!allKeys.hasAll(['storagePath']) || (data.storagePath is string && data.storagePath.size() <= 1024));
+    }
+
+    // Main Matcher
+    match /images/{imageId} {
+      allow get: if isOwner(existing().userId);
+      
+      allow list: if isSignedIn() 
+        && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() 
+        && isValidId(imageId)
+        && isValidImage(incoming());
+      
+      allow update: if isSignedIn()
+        && isOwner(existing().userId)
+        && isValidImage(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && (
+          // Action: Rename
+          incoming().diff(existing()).affectedKeys().hasOnly(['name'])
+        );
+      
+      allow delete: if isOwner(existing().userId);
+    }
+  }
+}
